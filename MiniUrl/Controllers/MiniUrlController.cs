@@ -1,12 +1,15 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using MiniUrl.Extensions;
 using MiniUrl.Models.Requests.MiniUrl;
+using MiniUrl.Models.Responses;
 using MiniUrl.Models.Responses.MiniUrl;
 
 namespace MiniUrl.Controllers;
 
 [ApiController]
 [Route("api/miniurls")]
+[Produces("application/json")]
 public class MiniUrlController : ControllerBase
 {
     private readonly ILogger<MiniUrlController> _logger;
@@ -23,16 +26,15 @@ public class MiniUrlController : ControllerBase
 
     [HttpPost]
     [ProducesResponseType(typeof(CreateMiniUrlResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateMiniUrl([FromBody] CreateMiniUrlRequest request)
     {
         var validationResult = await _miniUrlCreateRequestValidator.ValidateAsync(request);
         if (!validationResult.IsValid)
         {
-            return BadRequest(validationResult.ToDictionary());
+            return BadRequest(validationResult.ToErrorResponse(HttpContext));
         }
-
-        return Ok();
+        return Created();
     }
 }
