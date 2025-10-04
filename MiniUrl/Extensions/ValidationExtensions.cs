@@ -1,4 +1,3 @@
-
 using FluentValidation.Results;
 
 namespace MiniUrl.Extensions;

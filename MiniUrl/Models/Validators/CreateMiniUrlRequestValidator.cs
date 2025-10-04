@@ -11,7 +11,7 @@ public class CreateMiniUrlRequestValidator : AbstractValidator<CreateMiniUrlRequ
         Uri.UriSchemeHttps,
         Uri.UriSchemeFtp,
     };
-    
+
     public CreateMiniUrlRequestValidator()
     {
         RuleFor(u => u.Url)

@@ -41,7 +41,8 @@ public class FluentValidationSchemaFilter : ISchemaFilter
         }
     }
 
-    private void ApplyValidatorRules(OpenApiSchema schema, string propertyKey, OpenApiSchema propertySchema, IPropertyValidator validator)
+    private void ApplyValidatorRules(OpenApiSchema schema, string propertyKey, OpenApiSchema propertySchema,
+        IPropertyValidator validator)
     {
         // NotEmpty/NotNull - make field required
         if (validator is INotNullValidator or INotEmptyValidator)
@@ -65,7 +66,7 @@ public class FluentValidationSchemaFilter : ISchemaFilter
         {
             var valueToCompare = comparisonValidator.ValueToCompare;
             var validatorName = validator.Name;
-            
+
             if (validatorName.Contains("GreaterThan"))
             {
                 if (decimal.TryParse(valueToCompare?.ToString(), out var min))

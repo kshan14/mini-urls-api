@@ -15,7 +15,7 @@ public class MiniUrlController : ControllerBase
     public MiniUrlController(
         ILogger<MiniUrlController> logger,
         IValidator<CreateMiniUrlRequest> miniUrlCreateRequestValidator
-        )
+    )
     {
         _logger = logger;
         _miniUrlCreateRequestValidator = miniUrlCreateRequestValidator;
@@ -32,6 +32,7 @@ public class MiniUrlController : ControllerBase
         {
             return BadRequest(validationResult.ToDictionary());
         }
+
         return Ok();
     }
 }
