@@ -14,14 +14,18 @@
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "http://localhost:5053",
+      "applicationUrl": "http://localhost:8080",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "DBConfig__Host": "localhost",
         "DBConfig__Port": "5432",
         "DBConfig__Database": "mini_url",
         "DBConfig__Username": "postgres",
-        "DBConfig__Password": "admin"
+        "DBConfig__Password": "admin",
+        "JWTConfig__Key": "7bF4$m@vJpZn8+eXy$R1*uKwG2cQhA^q5oL#T9iK6eB",
+        "JWTConfig__Issuer": "MiniUrl",
+        "JWTConfig__Audience": "MiniUrlApiUsers",
+        "JWTConfig__ExpiresInMinutes": "10"
       }
     },
     "https": {
@@ -29,7 +33,7 @@
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "https://localhost:7214;http://localhost:5053",
+      "applicationUrl": "http://localhost:8080",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
