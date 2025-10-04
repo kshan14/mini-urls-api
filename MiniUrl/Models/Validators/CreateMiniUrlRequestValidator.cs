@@ -15,9 +15,9 @@ public class CreateMiniUrlRequestValidator : AbstractValidator<CreateMiniUrlRequ
     public CreateMiniUrlRequestValidator()
     {
         RuleFor(u => u.Url)
-            .NotEmpty().WithMessage("Url is required")
-            .MaximumLength(2000).WithMessage("Url cannot exceed 2000 characters")
-            .Must(IsValidUrl).WithMessage("Url must be in a valid format (http://, https://, ftp://)");
+            .NotEmpty().WithMessage("url is required")
+            .MaximumLength(2000).WithMessage("url cannot exceed 2000 characters")
+            .Must(IsValidUrl).WithMessage("url must be in a valid format (http://, https://, ftp://)");
     }
 
     private bool IsValidUrl(string url)

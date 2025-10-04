@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Text;
 using FluentValidation;
-using MicroElements.Swashbuckle.FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -28,28 +27,28 @@ var jwtConfig = new JwtConfig();
 builder.Configuration.GetSection("JWTConfig").Bind(jwtConfig);
 builder.Services.AddSingleton(jwtConfig);
 builder.Services.AddAuthentication(opts =>
-{
-    opts.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    opts.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(opts =>
-{
-    opts.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtConfig.Issuer,
-        ValidAudience = jwtConfig.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtConfig.Key))
-    };
-});
+        opts.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        opts.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(opts =>
+    {
+        opts.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtConfig.Issuer,
+            ValidAudience = jwtConfig.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtConfig.Key))
+        };
+    });
 
 builder.Services.AddAuthorization();
 
 // Add Validation Services
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-    
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -58,7 +57,6 @@ builder.Services.AddSwaggerGen(c =>
     // Add Fluent Validation Schema to reflect in Swagger
     c.SchemaFilter<FluentValidationSchemaFilter>();
 });
-builder.Services.AddFluentValidationRulesToSwagger();   // this is used to reflect fluent api validation in swagger
 
 var app = builder.Build();
 

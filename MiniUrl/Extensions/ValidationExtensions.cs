@@ -1,16 +1,30 @@
+using System.Text.Json;
 using FluentValidation.Results;
+using MiniUrl.Models.Responses;
 
 namespace MiniUrl.Extensions;
 
 public static class ValidationExtensions
 {
-    public static IDictionary<string, string[]> ToDictionary(this ValidationResult result)
+    public static ErrorResponse ToErrorResponse(this ValidationResult result, HttpContext httpContext)
     {
-        return result.Errors
-            .GroupBy(x => x.PropertyName)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Select(x => x.ErrorMessage).ToArray()
-            );
+        var namingPolicy = JsonNamingPolicy.CamelCase;
+        var errors = result.Errors
+            .Select(x => new ValidationError
+            {
+                Field = namingPolicy.ConvertName(x.PropertyName),
+                Message = x.ErrorMessage
+            })
+            .ToList();
+        return new ErrorResponse
+        {
+            Title = "VALIDATION_ERROR",
+            Url = httpContext.Request.Path,
+            Method = httpContext.Request.Method,
+            StatusCode = (int)StatusCodes.Status400BadRequest,
+            TraceId = httpContext.TraceIdentifier,
+            Timestamp = DateTime.Now,
+            Errors = errors
+        };
     }
 }
