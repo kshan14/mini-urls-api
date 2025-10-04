@@ -1,11 +1,17 @@
+using System.Reflection;
+using System.Text;
+using FluentValidation;
+using MicroElements.Swashbuckle.FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using MiniUrl.Configs;
 using MiniUrl.Database;
+using MiniUrl.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 
 builder.Services.AddControllers();
 
@@ -17,9 +23,42 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
     options.UseNpgsql(dbConfig.BuildConnectionString());
 });
 
+// Add Jwt Config and Required Services
+var jwtConfig = new JwtConfig();
+builder.Configuration.GetSection("JWTConfig").Bind(jwtConfig);
+builder.Services.AddSingleton(jwtConfig);
+builder.Services.AddAuthentication(opts =>
+{
+    opts.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    opts.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(opts =>
+{
+    opts.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtConfig.Issuer,
+        ValidAudience = jwtConfig.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtConfig.Key))
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// Add Validation Services
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+    
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo() { Title = "Mini Url", Version = "v1" });
+    // Add Fluent Validation Schema to reflect in Swagger
+    c.SchemaFilter<FluentValidationSchemaFilter>();
+});
+builder.Services.AddFluentValidationRulesToSwagger();   // this is used to reflect fluent api validation in swagger
 
 var app = builder.Build();
 
@@ -37,8 +76,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
