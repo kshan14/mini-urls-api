@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using MiniUrl.Data;
 using MiniUrl.Database;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -37,8 +38,16 @@ namespace MiniUrl.Migrations
                     b.Property<Guid>("CreatorId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("varchar(2000)");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamptz");
+
+                    b.Property<string>("ShortenedUrl")
+                        .IsRequired()
+                        .HasColumnType("varchar(300)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -49,13 +58,16 @@ namespace MiniUrl.Migrations
 
                     b.Property<string>("Url")
                         .IsRequired()
-                        .HasColumnType("varchar(500)");
+                        .HasColumnType("varchar(2000)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ApproverId");
 
                     b.HasIndex("CreatorId");
+
+                    b.HasIndex("ShortenedUrl")
+                        .IsUnique();
 
                     b.ToTable("TinyUrls", (string)null);
                 });

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MiniUrl.Entities;
 
-namespace MiniUrl.Database.Configurations;
+namespace MiniUrl.Data.Configurations;
 
 public class TinyUrlConfiguration : IEntityTypeConfiguration<TinyUrl>
 {
@@ -12,7 +12,12 @@ public class TinyUrlConfiguration : IEntityTypeConfiguration<TinyUrl>
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Url)
             .IsRequired()
-            .HasColumnType("varchar(500)");
+            .HasColumnType("varchar(2000)");
+        builder.Property(t => t.ShortenedUrl)
+            .IsRequired()
+            .HasColumnType("varchar(300)");
+        builder.Property(t => t.Description)
+            .HasColumnType("varchar(2000)");
         builder.Property(t => t.Status)
             .IsRequired()
             .HasConversion<string>()
@@ -26,6 +31,9 @@ public class TinyUrlConfiguration : IEntityTypeConfiguration<TinyUrl>
         builder.Property(t => t.ExpiresAt)
             .IsRequired()
             .HasColumnType("timestamptz");
+        // tiny url column index
+        builder.HasIndex(t => t.ShortenedUrl)
+            .IsUnique();
         // define relationships
         builder.HasOne(t => t.Creator)
             .WithMany()

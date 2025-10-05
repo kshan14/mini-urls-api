@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using MiniUrl.Data.Configurations;
 using MiniUrl.Database.Configurations;
 using MiniUrl.Entities;
 
-namespace MiniUrl.Database;
+namespace MiniUrl.Data;
 
 public class AppDbContext : DbContext
 {

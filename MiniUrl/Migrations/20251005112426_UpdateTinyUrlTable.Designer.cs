@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MiniUrl.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251002144640_InitialMigration")]
-    partial class InitialMigration
+    [Migration("20251005112426_UpdateTinyUrlTable")]
+    partial class UpdateTinyUrlTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,8 +41,16 @@ namespace MiniUrl.Migrations
                     b.Property<Guid>("CreatorId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("varchar(2000)");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamptz");
+
+                    b.Property<string>("ShortenedUrl")
+                        .IsRequired()
+                        .HasColumnType("varchar(300)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -53,13 +61,16 @@ namespace MiniUrl.Migrations
 
                     b.Property<string>("Url")
                         .IsRequired()
-                        .HasColumnType("varchar(500)");
+                        .HasColumnType("varchar(2000)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ApproverId");
 
                     b.HasIndex("CreatorId");
+
+                    b.HasIndex("ShortenedUrl")
+                        .IsUnique();
 
                     b.ToTable("TinyUrls", (string)null);
                 });
