@@ -21,7 +21,7 @@ public static class ValidationExtensions
             Title = "VALIDATION_ERROR",
             Url = httpContext.Request.Path,
             Method = httpContext.Request.Method,
-            StatusCode = (int)StatusCodes.Status400BadRequest,
+            StatusCode = StatusCodes.Status400BadRequest,
             TraceId = httpContext.TraceIdentifier,
             Timestamp = DateTime.Now,
             Errors = errors

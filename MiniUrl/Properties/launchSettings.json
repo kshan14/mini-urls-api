@@ -25,7 +25,13 @@
         "JWTConfig__Key": "7bF4$m@vJpZn8+eXy$R1*uKwG2cQhA^q5oL#T9iK6eB",
         "JWTConfig__Issuer": "MiniUrl",
         "JWTConfig__Audience": "MiniUrlApiUsers",
-        "JWTConfig__ExpiresInMinutes": "10"
+        "JWTConfig__ExpiresInMinutes": "10",
+        "RedisConfig__Hosts": "localhost:6379",
+        "RedisConfig__Username": "redis",
+        "RedisConfig__Password": "redis",
+        "RedisConfig__AbortConnect": "true",
+        "RedisConfig__ConnectTimeout": "30",
+        "RedisConfig__Ssl": "false"
       }
     },
     "https": {
