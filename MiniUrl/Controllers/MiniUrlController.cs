@@ -4,6 +4,7 @@ using MiniUrl.Extensions;
 using MiniUrl.Models.Requests.MiniUrl;
 using MiniUrl.Models.Responses;
 using MiniUrl.Models.Responses.MiniUrl;
+using MiniUrl.Services;
 
 namespace MiniUrl.Controllers;
 
@@ -14,14 +15,17 @@ public class MiniUrlController : ControllerBase
 {
     private readonly ILogger<MiniUrlController> _logger;
     private readonly IValidator<CreateMiniUrlRequest> _miniUrlCreateRequestValidator;
+    private readonly IMiniUrlGenerator _miniUrlGenerator;
 
     public MiniUrlController(
         ILogger<MiniUrlController> logger,
-        IValidator<CreateMiniUrlRequest> miniUrlCreateRequestValidator
+        IValidator<CreateMiniUrlRequest> miniUrlCreateRequestValidator,
+        IMiniUrlGenerator miniUrlGenerator
     )
     {
         _logger = logger;
         _miniUrlCreateRequestValidator = miniUrlCreateRequestValidator;
+        _miniUrlGenerator = miniUrlGenerator;
     }
 
     [HttpPost]
@@ -35,6 +39,7 @@ public class MiniUrlController : ControllerBase
         {
             return BadRequest(validationResult.ToErrorResponse(HttpContext));
         }
-        return Created();
+        var result = await _miniUrlGenerator.GenerateUrl(request).ConfigureAwait(false);
+        return Created(string.Empty, result);   // how to pass the result here?
     }
 }

@@ -9,8 +9,32 @@ using Microsoft.OpenApi.Models;
 using MiniUrl.Configs;
 using MiniUrl.Database;
 using MiniUrl.Filters;
+using MiniUrl.Services;
+using Serilog;
+using Serilog.Context;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// configure logging
+var loggerConfig = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .WriteTo.Console(new Serilog.Formatting.Compact.CompactJsonFormatter());
+
+// configure logging to print to file only if it is non-development envrionment
+if (!builder.Environment.IsDevelopment())
+{
+    loggerConfig.WriteTo.File(
+        new Serilog.Formatting.Compact.CompactJsonFormatter(),
+        "logs/log-.txt",
+        rollingInterval: RollingInterval.Day
+    );
+}
+
+Log.Logger = loggerConfig.CreateLogger();
+builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 
@@ -20,6 +44,35 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 {
     var dbConfig = serviceProvider.GetRequiredService<IOptions<DbConfig>>().Value;
     options.UseNpgsql(dbConfig.BuildConnectionString());
+});
+
+// Add Redis Config and Services
+builder.Services.Configure<RedisConfig>(builder.Configuration.GetSection("RedisConfig"));
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var redisConfig = sp.GetRequiredService<IOptions<RedisConfig>>().Value;
+    // prepare hosts
+    var epCollection = new EndPointCollection();
+    var hosts = redisConfig.Hosts.Split(",", StringSplitOptions.RemoveEmptyEntries);
+    foreach (var h in hosts)
+    {
+        epCollection.Add(h.Trim());
+    }
+
+    var confOptions = new ConfigurationOptions
+    {
+        EndPoints = epCollection,
+        User = redisConfig.Username,
+        Password = redisConfig.Password,
+        AbortOnConnectFail = redisConfig.AbortConnect,
+        ConnectTimeout = redisConfig.ConnectTimeout,
+        Ssl = redisConfig.Ssl,
+        // Additional recommended settings
+        ConnectRetry = 100,
+        ReconnectRetryPolicy = new LinearRetry(3000),
+        KeepAlive = 60
+    };
+    return ConnectionMultiplexer.Connect(confOptions);
 });
 
 // Add Jwt Config and Required Services
@@ -58,7 +111,26 @@ builder.Services.AddSwaggerGen(c =>
     c.SchemaFilter<FluentValidationSchemaFilter>();
 });
 
+// Add Services
+builder.Services.AddHttpContextAccessor(); // this is required to get trace id in logger
+builder.Services.AddScoped<IBase62Encoder, Base62Encoder>();
+builder.Services.AddSingleton<IUrlCounter, UrlCounter>();
+builder.Services.AddScoped<IMiniUrlGenerator, MiniUrlGenerator>();
+
 var app = builder.Build();
+
+// Middleware for Logging info
+app.Use(async (context, next) =>
+{
+    var traceId = context.TraceIdentifier;
+    using (LogContext.PushProperty("TraceId", traceId))
+    using (LogContext.PushProperty("RequestPath", context.Request.Path))
+    using (LogContext.PushProperty("RequestMethod", context.Request.Method))
+    {
+        await next();
+    }
+});
+
 
 // Migrate Database
 using (var scope = app.Services.CreateScope())
@@ -76,7 +148,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
-app.Run();
+try
+{
+    Log.Information("Staring web application");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Web application terminated exception");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
