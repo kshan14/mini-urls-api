@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MiniUrl.Extensions;
 using MiniUrl.Models.Requests.MiniUrl;
@@ -28,6 +29,7 @@ public class MiniUrlController : ControllerBase
         _miniUrlGenerator = miniUrlGenerator;
     }
 
+    [Authorize(Roles = "Admin,User")]
     [HttpPost]
     [ProducesResponseType(typeof(CreateMiniUrlResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
