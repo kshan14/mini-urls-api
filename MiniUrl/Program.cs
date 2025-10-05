@@ -8,12 +8,13 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MiniUrl.Configs;
 using MiniUrl.Data;
-using MiniUrl.Database;
+using MiniUrl.Entities;
 using MiniUrl.Filters;
 using MiniUrl.Services;
 using Serilog;
 using Serilog.Context;
 using StackExchange.Redis;
+using Role = MiniUrl.Entities.Role;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -117,8 +118,11 @@ builder.Services.AddHttpContextAccessor(); // this is required to get trace id i
 builder.Services.AddScoped<IBase62Encoder, Base62Encoder>();
 builder.Services.AddSingleton<IUrlCounter, UrlCounter>();
 builder.Services.AddScoped<IMiniUrlGenerator, MiniUrlGenerator>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
-var app = builder.Build();
+var  app = builder.Build();
 
 // Middleware for Logging info
 app.Use(async (context, next) =>

@@ -40,6 +40,6 @@ public class MiniUrlController : ControllerBase
             return BadRequest(validationResult.ToErrorResponse(HttpContext));
         }
         var result = await _miniUrlGenerator.GenerateUrl(request).ConfigureAwait(false);
-        return Created(string.Empty, result);   // how to pass the result here?
+        return Created(string.Empty, result);
     }
 }
