@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models;
 using MiniUrl.Configs;
 using MiniUrl.Data;
 using MiniUrl.Entities;
+using MiniUrl.Extensions;
 using MiniUrl.Filters;
 using MiniUrl.Services;
 using Serilog;
@@ -125,6 +126,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 var  app = builder.Build();
 
 // Middleware for Logging info
+app.UseCustomExceptionHandling();
 app.Use(async (context, next) =>
 {
     var traceId = context.TraceIdentifier;

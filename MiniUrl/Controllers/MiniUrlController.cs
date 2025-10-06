@@ -44,4 +44,17 @@ public class MiniUrlController : ControllerBase
         var result = await _miniUrlGenerator.GenerateUrl(request).ConfigureAwait(false);
         return Created(string.Empty, result);
     }
+
+    [Authorize(Roles = "Admin")]
+    [Route("approve/{id:guid}")]
+    [HttpPut]
+    [ProducesResponseType( StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Approve([FromRoute] Guid id)
+    {
+        await _miniUrlGenerator.ApproveUrl(id);
+        return NoContent();
+    }
 }
