@@ -1,4 +1,5 @@
 using MiniUrl.Exceptions;
+using MiniUrl.Models.Responses;
 
 namespace MiniUrl.Middlewares;
 
@@ -31,15 +32,30 @@ public class ExceptionHandlerMiddleware
         {
             BadRequestException badRequestException => badRequestException.ToErrorResponse(httpContext),
             NotFoundException notFoundException => notFoundException.ToErrorResponse(httpContext),
-            _ => new InternalServerException().ToErrorResponse(httpContext)
+            InternalServerException internalServerException => internalServerException.ToErrorResponse(httpContext),
+            _ => HandleUnrecognisedException(ex, httpContext)
         };
         var req = httpContext.Request;
-        _logger.LogInformation(
-            "Handling exception for path: {Path}, method: {Method}, traceId: {TraceId}, statusCode: {StatusCode}",
-            req.Path, req.Method, httpContext.TraceIdentifier, errorResponse.StatusCode);
+        LogErrorResponse(errorResponse, ex, httpContext, "Handling Recognised Exception");
 
         httpContext.Response.ContentType = "application/json";
         httpContext.Response.StatusCode = errorResponse.StatusCode;
         await httpContext.Response.WriteAsJsonAsync(errorResponse);
+    }
+
+    private ErrorResponse HandleUnrecognisedException(Exception ex, HttpContext httpContext)
+    {
+        var errorResponse = new InternalServerException().ToErrorResponse(httpContext);
+        LogErrorResponse(errorResponse, ex, httpContext, "Handling UnrecognisedException");
+        return new InternalServerException().ToErrorResponse(httpContext);
+    }
+
+    private void LogErrorResponse(ErrorResponse errorResponse, Exception ex, HttpContext httpContext, string msgPrefix)
+    {
+        var req = httpContext.Request;
+        _logger.LogError(ex,
+            "{MessagePrefix} for path: {Path}, method: {Method}, traceId: {TraceId}, statusCode: {StatusCode}",
+            msgPrefix,
+            req.Path, req.Method, httpContext.TraceIdentifier, errorResponse.StatusCode);
     }
 }
