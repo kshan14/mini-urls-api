@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MiniUrl.Data;
+using MiniUrl.Exceptions;
 using MiniUrl.Models.Requests.Login;
 using MiniUrl.Models.Responses.Login;
 
@@ -26,8 +27,10 @@ public class AuthService : IAuthService
         var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username.Equals(loginRequest.Username));
         if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
         {
-            throw new Exception("Invalid credentials");
+            _logger.LogWarning("Invalid username or password");
+            throw new BadRequestException("Invalid credentials");
         }
+
         _logger.LogInformation("User with email {Email} logged in", user.Email);
         var token = _tokenService.CreateToken(user);
         return new LoginResponse

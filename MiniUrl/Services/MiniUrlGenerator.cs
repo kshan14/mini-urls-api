@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MiniUrl.Data;
 using MiniUrl.Entities;
+using MiniUrl.Exceptions;
 using MiniUrl.Models.Requests.MiniUrl;
 using MiniUrl.Models.Responses.MiniUrl;
 using Npgsql;
@@ -15,6 +16,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
     private readonly ICurrentUserService _currentUserService;
     private readonly AppDbContext _appDbContext;
     private readonly int ConflictRetryTimes = 10;
+    private readonly int LockTimeoutSeconds = 30;
 
     public MiniUrlGenerator(
         ILogger<MiniUrlGenerator> logger,
@@ -43,9 +45,15 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             {
                 _logger.LogWarning(ex, "Unique constraint violation");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating url");
+                throw new InternalServerException();
+            }
         }
+
         _logger.LogError("Failed to create new url with retry times {ConflictRetryTimes} exceeded", ConflictRetryTimes);
-        throw new Exception("Failed to create url");
+        throw new InternalServerException();
     }
 
     private async Task<CreateMiniUrlResponse> GetCounterAndGenerateUrl(CreateMiniUrlRequest req)
@@ -88,6 +96,49 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         {
             await txn.RollbackAsync();
             throw;
+        }
+    }
+
+    public async Task ApproveUrl(Guid urlId)
+    {
+        await using var txn = await _appDbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await _appDbContext.Database.ExecuteSqlRawAsync($"SET lock_timeout = {LockTimeoutSeconds * 1000}");
+            var entity = await _appDbContext.TinyUrls.FromSqlRaw("""
+                                                                 SELECT * FROM "TinyUrls"
+                                                                 WHERE "Id" = {0} FOR UPDATE
+                                                                 """, urlId).FirstOrDefaultAsync();
+            if (entity == null)
+            {
+                _logger.LogInformation("No TinyUrl with id {Id} found", urlId);
+                throw new NotFoundException($"Url {urlId} not found!");
+            }
+
+            if (entity.Status != UrlStatus.Pending)
+            {
+                _logger.LogInformation("Url with id {UrlId} is in {CurrentStatus} state, expected {ExpectedStatus}",
+                    urlId, entity.Status, UrlStatus.Pending);
+                throw new BadRequestException($"Url not in {UrlStatus.Pending} state");
+            }
+
+            entity.Status = UrlStatus.Approved;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.ApproverId = Guid.Parse(_currentUserService.GetUserId());
+            await _appDbContext.SaveChangesAsync();
+            await txn.CommitAsync();
+            _logger.LogInformation("Url with id {UrlId} has been approved", urlId);
+        }
+        catch (Exception ex) when (ex is NotFoundException or BadRequestException)
+        {
+            await txn.RollbackAsync();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await txn.RollbackAsync();
+            _logger.LogError(ex, "Failed to approve url with id {UrlId}", urlId);
+            throw new InternalServerException();
         }
     }
 

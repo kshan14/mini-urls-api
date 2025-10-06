@@ -23,7 +23,7 @@ public static class ValidationExtensions
             Method = httpContext.Request.Method,
             StatusCode = StatusCodes.Status400BadRequest,
             TraceId = httpContext.TraceIdentifier,
-            Timestamp = DateTime.Now,
+            Timestamp = DateTime.UtcNow,
             Errors = errors
         };
     }
