@@ -26,6 +26,8 @@
         "JWTConfig__Issuer": "MiniUrl",
         "JWTConfig__Audience": "MiniUrlApiUsers",
         "JWTConfig__ExpiresInMinutes": "120",
+        "UrlConfig__BasePath": "http://localhost:8080",
+        "UrlConfig__CacheExpiryMinutes": "10",
         "RedisConfig__Hosts": "localhost:6379",
         "RedisConfig__Username": "redis",
         "RedisConfig__Password": "redis",

@@ -10,4 +10,5 @@ public interface IMiniUrlGenerator
     Task<CreateMiniUrlResponse> GenerateUrl(CreateMiniUrlRequest req);
     Task ApproveUrl(Guid urlId);
     Task DenyUrl(Guid urlId);
+    Task DeleteUrl(Guid urlId);
 }

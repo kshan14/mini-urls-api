@@ -114,6 +114,11 @@ builder.Services.AddSwaggerGen(c =>
     c.SchemaFilter<FluentValidationSchemaFilter>();
 });
 
+// Add Other Configs
+var urlConfig = new UrlConfig();
+builder.Configuration.GetSection("UrlConfig").Bind(urlConfig);
+builder.Services.AddSingleton(urlConfig);
+
 // Add Services
 builder.Services.AddHttpContextAccessor(); // this is required to get trace id in logger
 builder.Services.AddScoped<IBase62Encoder, Base62Encoder>();
@@ -124,6 +129,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMapperService, MapperService>();
 builder.Services.AddScoped<IMiniUrlViewService, MiniUrlViewService>();
+builder.Services.AddScoped<IUrlCacheService, UrlCacheService>();
 
 var  app = builder.Build();
 
