@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Extensions;
 using MiniUrl.Configs;
 using MiniUrl.Entities;
 
@@ -21,10 +22,10 @@ public class TokenService : ITokenService
         // 1. Create Claims
         var claims = new List<Claim>()
         {
-            new (ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new (ClaimTypes.Name, user.Username),
-            new (ClaimTypes.Email, user.Email),
-            new (ClaimTypes.Role, nameof(user.Role))
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Role, user.Role.ToString())
         };
         // 2. Generate Token
         var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_jwtConfig.Key));

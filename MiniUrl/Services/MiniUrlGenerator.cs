@@ -16,6 +16,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
     private readonly IBase62Encoder _base62Encoder;
     private readonly IUrlCounter _urlCounter;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IUrlCacheService _urlCacheService;
     private readonly AppDbContext _appDbContext;
     private readonly int ConflictRetryTimes = 10;
     private readonly int LockTimeoutSeconds = 30;
@@ -145,6 +146,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         await using var txn = await _appDbContext.Database.BeginTransactionAsync();
         try
         {
+            // 1. Get TinyUrl by id
             var entity = await GetTinyUrlWithLock(urlId);
             if (entity == null)
             {
@@ -159,12 +161,15 @@ public class MiniUrlGenerator : IMiniUrlGenerator
                 throw new BadRequestException($"Url already {entity.Status}");
             }
 
+            // 2. Update attributes and save in DB
             entity.Status = UrlStatus.Rejected;
             entity.UpdatedAt = DateTime.UtcNow;
             entity.ApproverId = _currentUserService.GetUserId();
             await _appDbContext.SaveChangesAsync();
             await txn.CommitAsync();
             _logger.LogInformation("Url with id {UrlId} has been rejected", urlId);
+            // 3. Clear from Cache
+            _ = Task.Run(async () => { await RemoveTinyUrlFromCache(entity.ShortenedUrl); });
         }
         catch (Exception ex) when (ex is NotFoundException or BadRequestException)
         {
@@ -179,6 +184,46 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         }
     }
 
+    // Note. Admin can delete any url. User can only delete his/her own url
+    public async Task DeleteUrl(Guid urlId)
+    {
+        await using var txn = await _appDbContext.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Get Tiny Url by id
+            var entity = await GetTinyUrlWithLock(urlId);
+            if (entity == null)
+            {
+                _logger.LogInformation("No TinyUrl with id {Id found}", urlId);
+                throw new NotFoundException($"Url {urlId} not found!");
+            }
+
+            // 2. Admin can delete any record. User can only delete his/her own url
+            if (_currentUserService.IsSameRole(Role.User) && !entity.CreatorId.Equals(_currentUserService.GetUserId()))
+            {
+                _logger.LogInformation("User cannot delete the url which he/she doesn't own");
+                throw new ForbiddenException();
+            }
+
+            // 3. Remove from DB
+            _appDbContext.TinyUrls.Remove(entity);
+            await _appDbContext.SaveChangesAsync();
+            await txn.CommitAsync();
+            _logger.LogInformation("Url with id {UrlId} has been deleted", urlId);
+            // 4. Clear from cache
+            _ = Task.Run(async () => { await RemoveTinyUrlFromCache(entity.ShortenedUrl); });
+        }
+        catch (Exception ex) when (ex is NotFoundException or ForbiddenException)
+        {
+            await txn.RollbackAsync();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await txn.RollbackAsync();
+        }
+    }
+
     private async Task<TinyUrl?> GetTinyUrlWithLock(Guid urlId)
     {
         await _appDbContext.Database.ExecuteSqlRawAsync($"SET lock_timeout = {LockTimeoutSeconds * 1000}");
@@ -186,6 +231,18 @@ public class MiniUrlGenerator : IMiniUrlGenerator
                                                         SELECT * FROM "TinyUrls"
                                                         WHERE "Id" = {0} FOR UPDATE
                                                        """, urlId).FirstOrDefaultAsync();
+    }
+
+    private async Task RemoveTinyUrlFromCache(string shortenedUrl)
+    {
+        try
+        {
+            await _urlCacheService.RemoveRedirectedUrl(shortenedUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing TinyUrl {ShortenedUrl} from cache", shortenedUrl);
+        }
     }
 
     private bool IsUniqueConstraintViolation(DbUpdateException ex)

@@ -42,7 +42,7 @@ public class MiniUrlController : ControllerBase
     [ProducesResponseType(typeof(PaginationResponse<GetTinyUrlResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Get([FromQuery] PaginationRequest request)
+    public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
     {
         var validationResult = await _paginationRequestValidator.ValidateAsync(request);
         if (!validationResult.IsValid)
@@ -68,6 +68,18 @@ public class MiniUrlController : ControllerBase
 
         var result = await _miniUrlGenerator.GenerateUrl(request).ConfigureAwait(false);
         return Created(string.Empty, result);
+    }
+
+    [Authorize(Roles = "Admin,User")]
+    [Route("delete/{id:guid}")]
+    [HttpDelete]
+    [ProducesResponseType(typeof(CreateMiniUrlResponse), StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteMiniUrl([FromRoute] Guid id)
+    {
+        await _miniUrlGenerator.DeleteUrl(id);
+        return NoContent();
     }
 
     [Authorize(Roles = "Admin")]
