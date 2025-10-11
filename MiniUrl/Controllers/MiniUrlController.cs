@@ -49,7 +49,7 @@ public class MiniUrlController : ControllerBase
         {
             return BadRequest(validationResult.Errors);
         }
-        
+
         return Ok(await _miniUrlViewService.GetUrls(request));
     }
 
@@ -73,7 +73,9 @@ public class MiniUrlController : ControllerBase
     [Authorize(Roles = "Admin,User")]
     [Route("delete/{id:guid}")]
     [HttpDelete]
-    [ProducesResponseType(typeof(CreateMiniUrlResponse), StatusCodes.Status204NoContent)]
+
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteMiniUrl([FromRoute] Guid id)
@@ -107,5 +109,4 @@ public class MiniUrlController : ControllerBase
         await _miniUrlGenerator.DenyUrl(id);
         return NoContent();
     }
-    
 }
