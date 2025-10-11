@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using MiniUrl.Entities;
+using MiniUrl.Exceptions;
 
 namespace MiniUrl.Services;
 
@@ -12,9 +13,13 @@ public class CurrentUserService : ICurrentUserService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public string GetUserId()
+    public Guid GetUserId()
     {
-        return _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                     throw new UnauthorizedException();
+        ;
+
+        return Guid.Parse(userId);
     }
 
     public string GetUserEmail()
@@ -22,13 +27,16 @@ public class CurrentUserService : ICurrentUserService
         return _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Email)?.Value ?? "";
     }
 
-    public string GetUserRole()
+    public Role GetUserRole()
     {
-        return _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+        var userRole = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ??
+                       throw new UnauthorizedException();
+
+        return Enum.Parse<Role>(userRole);
     }
 
     public bool IsSameRole(Role userRole)
     {
-        return GetUserRole().Equals(userRole.ToString());
+        return GetUserRole().Equals(userRole);
     }
 }

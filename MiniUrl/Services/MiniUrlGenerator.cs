@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using MiniUrl.Data;
 using MiniUrl.Entities;
 using MiniUrl.Exceptions;
+using MiniUrl.Models.Requests.Common;
 using MiniUrl.Models.Requests.MiniUrl;
+using MiniUrl.Models.Responses.Common;
 using MiniUrl.Models.Responses.MiniUrl;
 using Npgsql;
 
@@ -72,7 +74,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
                 ShortenedUrl = miniUrl,
                 Description = req.Description,
                 Status = UrlStatus.Pending,
-                CreatorId = Guid.Parse(_currentUserService.GetUserId()),
+                CreatorId = _currentUserService.GetUserId(),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMonths(5),
@@ -104,27 +106,23 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         await using var txn = await _appDbContext.Database.BeginTransactionAsync();
         try
         {
-            await _appDbContext.Database.ExecuteSqlRawAsync($"SET lock_timeout = {LockTimeoutSeconds * 1000}");
-            var entity = await _appDbContext.TinyUrls.FromSqlRaw("""
-                                                                 SELECT * FROM "TinyUrls"
-                                                                 WHERE "Id" = {0} FOR UPDATE
-                                                                 """, urlId).FirstOrDefaultAsync();
+            var entity = await GetTinyUrlWithLock(urlId);
             if (entity == null)
             {
                 _logger.LogInformation("No TinyUrl with id {Id} found", urlId);
                 throw new NotFoundException($"Url {urlId} not found!");
             }
 
-            if (entity.Status != UrlStatus.Pending)
+            if (entity.Status is UrlStatus.Approved)
             {
-                _logger.LogInformation("Url with id {UrlId} is in {CurrentStatus} state, expected {ExpectedStatus}",
-                    urlId, entity.Status, UrlStatus.Pending);
-                throw new BadRequestException($"Url not in {UrlStatus.Pending} state");
+                _logger.LogInformation("Url with id {UrlId}, tiny url {TinyUrl} already approved", urlId,
+                    entity.ShortenedUrl);
+                throw new BadRequestException($"Url already {entity.Status}");
             }
 
             entity.Status = UrlStatus.Approved;
             entity.UpdatedAt = DateTime.UtcNow;
-            entity.ApproverId = Guid.Parse(_currentUserService.GetUserId());
+            entity.ApproverId = _currentUserService.GetUserId();
             await _appDbContext.SaveChangesAsync();
             await txn.CommitAsync();
             _logger.LogInformation("Url with id {UrlId} has been approved", urlId);
@@ -140,6 +138,54 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             _logger.LogError(ex, "Failed to approve url with id {UrlId}", urlId);
             throw new InternalServerException();
         }
+    }
+
+    public async Task DenyUrl(Guid urlId)
+    {
+        await using var txn = await _appDbContext.Database.BeginTransactionAsync();
+        try
+        {
+            var entity = await GetTinyUrlWithLock(urlId);
+            if (entity == null)
+            {
+                _logger.LogInformation("No TinyUrl with id {Id found}", urlId);
+                throw new NotFoundException($"Url {urlId} not found!");
+            }
+
+            if (entity.Status is UrlStatus.Rejected)
+            {
+                _logger.LogInformation("Url with id {UrlId}, tiny url {TinyUrl} already rejected", urlId,
+                    entity.ShortenedUrl);
+                throw new BadRequestException($"Url already {entity.Status}");
+            }
+
+            entity.Status = UrlStatus.Rejected;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.ApproverId = _currentUserService.GetUserId();
+            await _appDbContext.SaveChangesAsync();
+            await txn.CommitAsync();
+            _logger.LogInformation("Url with id {UrlId} has been rejected", urlId);
+        }
+        catch (Exception ex) when (ex is NotFoundException or BadRequestException)
+        {
+            await txn.RollbackAsync();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await txn.RollbackAsync();
+            _logger.LogError(ex, "Failed to reject url with id {UrlId}", urlId);
+            throw new InternalServerException();
+        }
+    }
+
+    private async Task<TinyUrl?> GetTinyUrlWithLock(Guid urlId)
+    {
+        await _appDbContext.Database.ExecuteSqlRawAsync($"SET lock_timeout = {LockTimeoutSeconds * 1000}");
+        return await _appDbContext.TinyUrls.FromSqlRaw("""
+                                                        SELECT * FROM "TinyUrls"
+                                                        WHERE "Id" = {0} FOR UPDATE
+                                                       """, urlId).FirstOrDefaultAsync();
     }
 
     private bool IsUniqueConstraintViolation(DbUpdateException ex)
