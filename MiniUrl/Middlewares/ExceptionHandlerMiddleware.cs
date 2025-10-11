@@ -31,6 +31,7 @@ public class ExceptionHandlerMiddleware
         var errorResponse = ex switch
         {
             BadRequestException badRequestException => badRequestException.ToErrorResponse(httpContext),
+            UnauthorizedException unauthorizedException => unauthorizedException.ToErrorResponse(httpContext),
             NotFoundException notFoundException => notFoundException.ToErrorResponse(httpContext),
             InternalServerException internalServerException => internalServerException.ToErrorResponse(httpContext),
             _ => HandleUnrecognisedException(ex, httpContext)

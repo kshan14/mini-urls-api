@@ -122,6 +122,8 @@ builder.Services.AddScoped<IMiniUrlGenerator, MiniUrlGenerator>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IMapperService, MapperService>();
+builder.Services.AddScoped<IMiniUrlViewService, MiniUrlViewService>();
 
 var  app = builder.Build();
 

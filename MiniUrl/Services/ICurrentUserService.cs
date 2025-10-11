@@ -4,8 +4,8 @@ namespace MiniUrl.Services;
 
 public interface ICurrentUserService
 {
-    string GetUserId();
+    Guid GetUserId();
     string GetUserEmail();
-    string GetUserRole();
+    Role GetUserRole();
     bool IsSameRole(Role userRole);
 }

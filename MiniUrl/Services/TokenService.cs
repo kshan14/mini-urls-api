@@ -24,7 +24,7 @@ public class TokenService : ITokenService
             new (ClaimTypes.NameIdentifier, user.Id.ToString()),
             new (ClaimTypes.Name, user.Username),
             new (ClaimTypes.Email, user.Email),
-            new (ClaimTypes.Role, user.Role.ToString())
+            new (ClaimTypes.Role, nameof(user.Role))
         };
         // 2. Generate Token
         var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_jwtConfig.Key));
