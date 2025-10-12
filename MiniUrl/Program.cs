@@ -132,6 +132,7 @@ builder.Services.AddScoped<IMapperService, MapperService>();
 builder.Services.AddScoped<IMiniUrlViewService, MiniUrlViewService>();
 builder.Services.AddScoped<IUrlCacheService, UrlCacheService>();
 builder.Services.AddScoped<ITinyUrlStatusChangePublisher, TinyUrlStatusChangePublisher>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Add Background Services
 builder.Services.AddHostedService<TinyUrlStatusChangeReceiver>();
