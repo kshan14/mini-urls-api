@@ -17,6 +17,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
     private readonly IUrlCounter _urlCounter;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUrlCacheService _urlCacheService;
+    private readonly ITinyUrlStatusChangePublisher _tinyUrlStatusChangePublisher;
     private readonly AppDbContext _appDbContext;
     private readonly int ConflictRetryTimes = 10;
     private readonly int LockTimeoutSeconds = 30;
@@ -26,12 +27,16 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         IBase62Encoder base62Encoder,
         IUrlCounter urlCounter,
         ICurrentUserService currentUserService,
+        ITinyUrlStatusChangePublisher tinyUrlStatusChangePublisher,
+        IUrlCacheService urlCacheService,
         AppDbContext appDbContext)
     {
         _logger = logger;
         _base62Encoder = base62Encoder;
         _urlCounter = urlCounter;
         _currentUserService = currentUserService;
+        _urlCacheService = urlCacheService;
+        _tinyUrlStatusChangePublisher = tinyUrlStatusChangePublisher;
         _appDbContext = appDbContext;
     }
 
@@ -83,6 +88,11 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             _appDbContext.TinyUrls.Add(miniUrlRecord);
             await _appDbContext.SaveChangesAsync();
             await txn.CommitAsync();
+            // 4. Publish to notify about new record creation
+            _ = Task.Run(async () =>
+            {
+                await _tinyUrlStatusChangePublisher.PublishTinyUrlCreatedEvent(miniUrlRecord);
+            });
             return new CreateMiniUrlResponse
             {
                 Id = miniUrlRecord.Id,
@@ -107,6 +117,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         await using var txn = await _appDbContext.Database.BeginTransactionAsync();
         try
         {
+            // 1. Get Existing Record
             var entity = await GetTinyUrlWithLock(urlId);
             if (entity == null)
             {
@@ -114,6 +125,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
                 throw new NotFoundException($"Url {urlId} not found!");
             }
 
+            // 2. Validate status must not be already approved
             if (entity.Status is UrlStatus.Approved)
             {
                 _logger.LogInformation("Url with id {UrlId}, tiny url {TinyUrl} already approved", urlId,
@@ -121,11 +133,14 @@ public class MiniUrlGenerator : IMiniUrlGenerator
                 throw new BadRequestException($"Url already {entity.Status}");
             }
 
+            // 3. Approve and Update in DB
             entity.Status = UrlStatus.Approved;
             entity.UpdatedAt = DateTime.UtcNow;
             entity.ApproverId = _currentUserService.GetUserId();
             await _appDbContext.SaveChangesAsync();
             await txn.CommitAsync();
+            // 4. Publish to notify about record approval
+            _ = Task.Run(async () => { await _tinyUrlStatusChangePublisher.PublishTinyUrlApprovedEvent(entity); });
             _logger.LogInformation("Url with id {UrlId} has been approved", urlId);
         }
         catch (Exception ex) when (ex is NotFoundException or BadRequestException)
@@ -170,6 +185,8 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             _logger.LogInformation("Url with id {UrlId} has been rejected", urlId);
             // 3. Clear from Cache
             _ = Task.Run(async () => { await RemoveTinyUrlFromCache(entity.ShortenedUrl); });
+            // 4. Publish to notify about record rejection
+            _ = Task.Run(async () => { await _tinyUrlStatusChangePublisher.PublishTinyUrlRejectedEvent(entity); });
         }
         catch (Exception ex) when (ex is NotFoundException or BadRequestException)
         {
