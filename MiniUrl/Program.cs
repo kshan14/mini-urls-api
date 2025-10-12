@@ -12,6 +12,7 @@ using MiniUrl.Entities;
 using MiniUrl.Extensions;
 using MiniUrl.Filters;
 using MiniUrl.Services;
+using MiniUrl.Services.Background;
 using Serilog;
 using Serilog.Context;
 using StackExchange.Redis;
@@ -130,6 +131,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMapperService, MapperService>();
 builder.Services.AddScoped<IMiniUrlViewService, MiniUrlViewService>();
 builder.Services.AddScoped<IUrlCacheService, UrlCacheService>();
+builder.Services.AddScoped<ITinyUrlStatusChangePublisher, TinyUrlStatusChangePublisher>();
+
+// Add Background Services
+builder.Services.AddHostedService<TinyUrlStatusChangeReceiver>();
 
 var  app = builder.Build();
 
