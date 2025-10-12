@@ -49,7 +49,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             {
                 return await GetCounterAndGenerateUrl(req);
             }
-            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            catch (DbUpdateException ex) when (Commons.Utilities.IsUniqueConstraintViolation(ex))
             {
                 _logger.LogWarning(ex, "Unique constraint violation");
             }
@@ -260,15 +260,5 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         {
             _logger.LogError(ex, "Error removing TinyUrl {ShortenedUrl} from cache", shortenedUrl);
         }
-    }
-
-    private bool IsUniqueConstraintViolation(DbUpdateException ex)
-    {
-        if (ex.InnerException is PostgresException pgEx)
-        {
-            return pgEx.SqlState == PostgresErrorCodes.UniqueViolation;
-        }
-
-        return false;
     }
 }
