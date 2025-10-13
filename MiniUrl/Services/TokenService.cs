@@ -40,4 +40,27 @@ public class TokenService : ITokenService
         );
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public User GetUserFromToken(string token)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_jwtConfig.Key));
+        var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = _jwtConfig.Issuer,
+            ValidAudience = _jwtConfig.Audience,
+            IssuerSigningKey = key,
+        }, out _);
+
+        return new User
+        {
+            Id = Guid.Parse(principal.Claims.First(c => c.Type == ClaimTypes.NameIdentifier).Value),
+            Username = principal.Claims.First(c => c.Type == ClaimTypes.Name).Value,
+            Email = principal.Claims.First(c => c.Type == ClaimTypes.Email).Value,
+            Role = Enum.Parse<Role>(principal.Claims.First(c => c.Type == ClaimTypes.Role).Value),
+        };
+    }
 }

@@ -5,4 +5,5 @@ namespace MiniUrl.Services;
 public interface ITokenService
 {
     string CreateToken(User user);
+    User GetUserFromToken(string token);
 }
