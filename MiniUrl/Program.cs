@@ -8,15 +8,16 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MiniUrl.Configs;
 using MiniUrl.Data;
-using MiniUrl.Entities;
 using MiniUrl.Extensions;
 using MiniUrl.Filters;
+using MiniUrl.Middlewares;
 using MiniUrl.Services;
 using MiniUrl.Services.Background;
+using MiniUrl.Websockets;
 using Serilog;
 using Serilog.Context;
 using StackExchange.Redis;
-using Role = MiniUrl.Entities.Role;
+using WebSocketManager = MiniUrl.Websockets.WebSocketManager;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -126,21 +127,27 @@ builder.Services.AddScoped<IBase62Encoder, Base62Encoder>();
 builder.Services.AddSingleton<IUrlCounter, UrlCounter>();
 builder.Services.AddScoped<IMiniUrlGenerator, MiniUrlGenerator>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMapperService, MapperService>();
 builder.Services.AddScoped<IMiniUrlViewService, MiniUrlViewService>();
 builder.Services.AddScoped<IUrlCacheService, UrlCacheService>();
 builder.Services.AddScoped<ITinyUrlStatusChangePublisher, TinyUrlStatusChangePublisher>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddSingleton<IWebSocketManager, WebSocketManager>();
 
 // Add Background Services
 builder.Services.AddHostedService<TinyUrlStatusChangeReceiver>();
+builder.Services.AddHostedService<WebSocketManagerScheduler>();
 
-var  app = builder.Build();
+var app = builder.Build();
 
 // Middleware for Logging info
 app.UseCustomExceptionHandling();
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(120),
+});
 app.Use(async (context, next) =>
 {
     var traceId = context.TraceIdentifier;
@@ -151,7 +158,6 @@ app.Use(async (context, next) =>
         await next();
     }
 });
-
 
 // Migrate Database
 using (var scope = app.Services.CreateScope())
@@ -169,7 +175,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseWhen(
+    context =>
+    {
+        var isPathRight = context.Request.Path.Equals("/api/miniurls/ws");
+        var isWebSocketRequest = context.WebSockets.IsWebSocketRequest;
+        return isPathRight && isWebSocketRequest;
+    },
+    appBuilder => appBuilder.UseMiddleware<WebSocketMiddleware>());
 app.MapControllers();
+
 
 try
 {
