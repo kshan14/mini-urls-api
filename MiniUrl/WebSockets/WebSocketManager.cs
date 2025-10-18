@@ -30,6 +30,7 @@ public class WebSocketManager : IWebSocketManager
             await ListenForPongAsync(client, RemoveAdminConnectionAsync);
             return;
         }
+
         _logger.LogWarning("Failed to add admin websocket with userId: {UserId}", userId);
     }
 
@@ -101,6 +102,44 @@ public class WebSocketManager : IWebSocketManager
         }
     }
 
+    public async Task SendToAllAdminsAsync(byte[] message)
+    {
+        var tasks = _adminSockets.Values.Select(adminSocket => Task.Run(async () =>
+        {
+            try
+            {
+                await adminSocket.Socket.SendAsync(message, WebSocketMessageType.Text, true, CancellationToken.None);
+                _logger.LogDebug("Sent admin websocket message: {Message}", message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending admin websocket message: {Message}", message);
+            }
+        })).ToList();
+        await Task.WhenAll(tasks);
+        _logger.LogInformation("Sent message to all admin websockets");
+    }
+
+    public async Task SendToUserAsync(Guid userId, byte[] message)
+    {
+        var isExists = _userSockets.TryGetValue(userId, out var client);
+        if (!isExists || client == null)
+        {
+            _logger.LogDebug("User with userId: {UserId} does not exist", userId);
+            return;
+        }
+
+        try
+        {
+            await client.Socket.SendAsync(message, WebSocketMessageType.Text, true, CancellationToken.None);
+            _logger.LogDebug("Sent user websocket message: {Message}", message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending user websocket message: {Message}", message);
+        }
+    }
+
     private async Task PingAndRemoveAllAdmins()
     {
         _logger.LogInformation("PingAndRemoveAllAdmins started");
@@ -118,35 +157,42 @@ public class WebSocketManager : IWebSocketManager
     private async Task PingAndRemoveWebSockets(ConcurrentDictionary<Guid, WebSocketClient> sockets)
     {
         var now = DateTime.UtcNow;
-        var connectionsToRemove = new List<Guid>();
+        var tasks = new List<Task>();
+        var connectionsToRemove = new ConcurrentBag<Guid>();
 
+        // iterate through each socket connection. Getting blocked at individual socket should not interrupt/delay other socket connections.
         foreach (var (_, socketClient) in sockets)
         {
-            // check if client didn't respond back within ping interval + pong timeout
-            var pongTimeoutExceeds = now - socketClient.LastPongReceived > _pingInterval + _pongTimeout;
-            var isConnectionAlreadyClosed = socketClient.Socket.State != WebSocketState.Open;
-            if (pongTimeoutExceeds || isConnectionAlreadyClosed)
+            tasks.Add(Task.Run(async () =>
             {
-                _logger.LogInformation(
-                    "Going to remove websocket with userId: {UserId} as pong timeout exceeds or connection already closed",
-                    socketClient.Id);
-                connectionsToRemove.Add(socketClient.Id);
-                continue;
-            }
+                // check if client didn't respond back within ping interval + pong timeout or client connection is no longer open
+                var pongTimeoutExceeds = now - socketClient.LastPongReceived > _pingInterval + _pongTimeout;
+                var isConnectionAlreadyClosed = socketClient.Socket.State != WebSocketState.Open;
+                if (pongTimeoutExceeds || isConnectionAlreadyClosed)
+                {
+                    _logger.LogInformation(
+                        "Going to remove websocket with userId: {UserId} as pong timeout exceeds or connection already closed",
+                        socketClient.Id);
+                    connectionsToRemove.Add(socketClient.Id);
+                    return;
+                }
 
-            // not timeout yet, ping again
-            try
-            {
-                await socketClient.Socket.SendAsync(new ArraySegment<byte>([]), WebSocketMessageType.Text, true,
-                    CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to ping websocket with userId: {UserId} and going to remove",
-                    socketClient.Id);
-                connectionsToRemove.Add(socketClient.Id);
-            }
+                // not timeout yet, ping again
+                try
+                {
+                    await socketClient.Socket.SendAsync(new ArraySegment<byte>([]), WebSocketMessageType.Text, true,
+                        CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to ping websocket with userId: {UserId} and going to remove",
+                        socketClient.Id);
+                    connectionsToRemove.Add(socketClient.Id);
+                }
+            }));
         }
+
+        await Task.WhenAll(tasks);
 
         // now connections to be removed is collected. Begin removing.
         foreach (var userId in connectionsToRemove)
@@ -186,6 +232,7 @@ public class WebSocketManager : IWebSocketManager
         var buffer = new byte[1024 * 4];
         try
         {
+            // listens messages coming from client. If client sends Close message, terminate and clean up resources.
             while (webSocketClient.Socket.State == WebSocketState.Open &&
                    !webSocketClient.CancellationTokenSource.IsCancellationRequested)
             {
@@ -202,7 +249,7 @@ public class WebSocketManager : IWebSocketManager
                 _logger.LogDebug("Pong received from {UserId}", webSocketClient.Id);
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) // cancellation initiated by other logic so no need to close
         {
             _logger.LogInformation("Listener cancelled for {UserId}", webSocketClient.Id);
         }

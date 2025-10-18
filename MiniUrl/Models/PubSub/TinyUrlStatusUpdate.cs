@@ -7,7 +7,7 @@ public class TinyUrlStatusUpdate
     public Guid Id { get; set; }
     public string Url { get; set; }
     public string ShortenedUrl { get; set; }
-    public UrlStatus Status { get; set; }
+    public string Status { get; set; }
     public Guid CreatorId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
