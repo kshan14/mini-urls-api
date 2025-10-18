@@ -77,7 +77,7 @@ public class TinyUrlStatusChangePublisher : ITinyUrlStatusChangePublisher
             Id = tinyUrl.Id,
             Url = tinyUrl.Url,
             ShortenedUrl = tinyUrl.ShortenedUrl,
-            Status = tinyUrl.Status,
+            Status = tinyUrl.Status.ToString(),
             CreatorId = tinyUrl.CreatorId,
             CreatedAt = tinyUrl.CreatedAt,
             UpdatedAt = tinyUrl.UpdatedAt,

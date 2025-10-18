@@ -10,4 +10,6 @@ public interface IWebSocketManager
     Task RemoveUserConnectionAsync(Guid userId);
     Task PingAndRemoveAllConnections();
     Task StopAndClearAllConnections();
+    Task SendToAllAdminsAsync(byte[] message);
+    Task SendToUserAsync(Guid userId, byte[] message);
 }
