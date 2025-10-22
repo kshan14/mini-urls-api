@@ -19,7 +19,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
     private readonly IUrlCacheService _urlCacheService;
     private readonly ITinyUrlStatusChangePublisher _tinyUrlStatusChangePublisher;
     private readonly AppDbContext _appDbContext;
-    private readonly int ConflictRetryTimes = 10;
+    private readonly int ConflictRetryTimes = 1000;
     private readonly int LockTimeoutSeconds = 30;
 
     public MiniUrlGenerator(
