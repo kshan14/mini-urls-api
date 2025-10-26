@@ -14,7 +14,7 @@ public class MapperService : IMapperService
             Url = tinyUrl.Url,
             ShortenedUrl = tinyUrl.ShortenedUrl,
             Description = tinyUrl.Description,
-            Status = nameof(tinyUrl.Status),
+            Status = tinyUrl.Status.ToString(),
             CreatedAt = tinyUrl.CreatedAt,
             UpdatedAt = tinyUrl.UpdatedAt,
             ExpiresAt = tinyUrl.ExpiresAt
