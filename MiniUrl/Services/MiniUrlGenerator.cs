@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MiniUrl.Configs;
 using MiniUrl.Data;
 using MiniUrl.Entities;
 using MiniUrl.Exceptions;
@@ -19,6 +20,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
     private readonly IUrlCacheService _urlCacheService;
     private readonly ITinyUrlStatusChangePublisher _tinyUrlStatusChangePublisher;
     private readonly AppDbContext _appDbContext;
+    private readonly UrlConfig _urlConfig;
     private readonly int ConflictRetryTimes = 1000;
     private readonly int LockTimeoutSeconds = 30;
 
@@ -29,7 +31,8 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         ICurrentUserService currentUserService,
         ITinyUrlStatusChangePublisher tinyUrlStatusChangePublisher,
         IUrlCacheService urlCacheService,
-        AppDbContext appDbContext)
+        AppDbContext appDbContext,
+        UrlConfig urlConfig)
     {
         _logger = logger;
         _base62Encoder = base62Encoder;
@@ -38,6 +41,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         _urlCacheService = urlCacheService;
         _tinyUrlStatusChangePublisher = tinyUrlStatusChangePublisher;
         _appDbContext = appDbContext;
+        _urlConfig = urlConfig;
     }
 
     public async Task<CreateMiniUrlResponse> GenerateUrl(CreateMiniUrlRequest req)
@@ -97,7 +101,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             {
                 Id = miniUrlRecord.Id,
                 Url = miniUrlRecord.Url,
-                ShortenedUrl = miniUrlRecord.ShortenedUrl,
+                ShortenedUrl = Path.Combine(_urlConfig.BasePath,  miniUrlRecord.ShortenedUrl),
                 Description = miniUrlRecord.Description,
                 Status = miniUrlRecord.Status.ToString(),
                 CreatedAt = miniUrlRecord.CreatedAt,
