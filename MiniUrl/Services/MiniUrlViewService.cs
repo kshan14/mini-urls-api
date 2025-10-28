@@ -35,16 +35,16 @@ public class MiniUrlViewService : IMiniUrlViewService
         _urlCacheService = urlCacheService;
     }
 
-    public async Task<PaginationResponse<GetTinyUrlResponse>> GetUrls(PaginationRequest req)
+    public async Task<PaginationResponse<GetTinyUrlResponse>> GetUrls(PaginationRequest req, UrlStatus? status)
     {
         try
         {
             // 1. Get the data list
             // 2. Get total count
-            var list = await GetTinyUrlsListQueryable(req)
+            var list = await GetTinyUrlsListQueryable(req, status)
                 .OrderBy(x => x.CreatedAt)
                 .ToListAsync();
-            var count = await GetTinyUrlsTotalCountQueryable()
+            var count = await GetTinyUrlsTotalCountQueryable(status)
                 .LongCountAsync();
 
             var dataList = list.Select(t =>
@@ -121,7 +121,7 @@ public class MiniUrlViewService : IMiniUrlViewService
         }
     }
 
-    private IQueryable<TinyUrl> GetTinyUrlsListQueryable(PaginationRequest req)
+    private IQueryable<TinyUrl> GetTinyUrlsListQueryable(PaginationRequest req, UrlStatus? status)
     {
         var listQuery = _appDbContext.TinyUrls.AsQueryable()
             .Skip(req.Offset)
@@ -132,17 +132,27 @@ public class MiniUrlViewService : IMiniUrlViewService
             listQuery = listQuery.Where(t => t.CreatorId.Equals(_currentUserService.GetUserId()));
         }
 
+        if (status != null)
+        {
+            listQuery = listQuery.Where(t => t.Status.Equals(status));
+        }
+
         return listQuery.Include(t => t.Creator)
             .Include(t => t.Approver);
     }
 
-    private IQueryable<TinyUrl> GetTinyUrlsTotalCountQueryable()
+    private IQueryable<TinyUrl> GetTinyUrlsTotalCountQueryable(UrlStatus? status)
     {
         var countQuery = _appDbContext.TinyUrls.AsQueryable();
 
         if (_currentUserService.IsSameRole(Role.User))
         {
             countQuery = countQuery.Where(t => t.CreatorId.Equals(_currentUserService.GetUserId()));
+        }
+
+        if (status != null)
+        {
+            countQuery = countQuery.Where(t => t.Status.Equals(status));
         }
 
         return countQuery;

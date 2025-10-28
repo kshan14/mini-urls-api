@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace MiniUrl.Models.Requests.Common;
 
 public class PaginationRequest
