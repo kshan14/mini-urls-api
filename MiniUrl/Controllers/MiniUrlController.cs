@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MiniUrl.Entities;
 using MiniUrl.Extensions;
 using MiniUrl.Models.Requests.Common;
 using MiniUrl.Models.Requests.MiniUrl;
@@ -42,7 +43,7 @@ public class MiniUrlController : ControllerBase
     [ProducesResponseType(typeof(PaginationResponse<GetTinyUrlResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
+    public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request, [FromQuery] UrlStatus? status)
     {
         var validationResult = await _paginationRequestValidator.ValidateAsync(request);
         if (!validationResult.IsValid)
@@ -50,7 +51,7 @@ public class MiniUrlController : ControllerBase
             return BadRequest(validationResult.Errors);
         }
 
-        return Ok(await _miniUrlViewService.GetUrls(request));
+        return Ok(await _miniUrlViewService.GetUrls(request, status));
     }
 
     [Authorize(Roles = "Admin,User")]

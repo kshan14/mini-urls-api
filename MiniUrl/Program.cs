@@ -114,6 +114,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo() { Title = "Mini Url", Version = "v1" });
     // Add Fluent Validation Schema to reflect in Swagger
     c.SchemaFilter<FluentValidationSchemaFilter>();
+    c.SchemaFilter<EnumSchemaFilter>();
 });
 
 // Add Other Configs
