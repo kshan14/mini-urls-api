@@ -41,9 +41,7 @@ public class MiniUrlViewService : IMiniUrlViewService
         {
             // 1. Get the data list
             // 2. Get total count
-            var list = await GetTinyUrlsListQueryable(req, status)
-                .OrderBy(x => x.CreatedAt)
-                .ToListAsync();
+            var list = await GetPaginatedTinyUrls(req, status);
             var count = await GetTinyUrlsTotalCountQueryable(status)
                 .LongCountAsync();
 
@@ -121,24 +119,34 @@ public class MiniUrlViewService : IMiniUrlViewService
         }
     }
 
-    private IQueryable<TinyUrl> GetTinyUrlsListQueryable(PaginationRequest req, UrlStatus? status)
+    private async Task<List<TinyUrl>> GetPaginatedTinyUrls(PaginationRequest req, UrlStatus? status)
     {
-        var listQuery = _appDbContext.TinyUrls.AsQueryable()
-            .Skip(req.Offset)
-            .Take(req.Limit);
-
+        // 1. Get the paginated record id with filters. As Include Join interrupts Take Query.
+        var recordIdsQuery = _appDbContext.TinyUrls.AsQueryable();
+        // filter based on role
         if (_currentUserService.IsSameRole(Role.User))
         {
-            listQuery = listQuery.Where(t => t.CreatorId.Equals(_currentUserService.GetUserId()));
+            recordIdsQuery = recordIdsQuery.Where(t => t.CreatorId.Equals(_currentUserService.GetUserId()));
         }
-
+        // filter based on status if applicable
         if (status != null)
         {
-            listQuery = listQuery.Where(t => t.Status.Equals(status));
+            recordIdsQuery = recordIdsQuery.Where(t => t.Status.Equals(status));
         }
 
-        return listQuery.Include(t => t.Creator)
-            .Include(t => t.Approver);
+        var recordIds = await recordIdsQuery
+            .OrderBy(r => r.UpdatedAt)
+            .Skip(req.Offset)
+            .Take(req.Limit)
+            .Select(r => r.Id).ToListAsync();
+        
+        // once get the paginated record id, take the records by join
+        return await _appDbContext.TinyUrls
+            .Where(r => recordIds.Contains(r.Id))
+            .Include(r => r.Approver)
+            .Include(r => r.Creator)
+            .OrderBy(r => r.UpdatedAt)
+            .ToListAsync();
     }
 
     private IQueryable<TinyUrl> GetTinyUrlsTotalCountQueryable(UrlStatus? status)
