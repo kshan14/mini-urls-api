@@ -135,7 +135,7 @@ public class MiniUrlViewService : IMiniUrlViewService
         }
 
         var recordIds = await recordIdsQuery
-            .OrderBy(r => r.UpdatedAt)
+            .OrderByDescending(r => r.UpdatedAt)
             .Skip(req.Offset)
             .Take(req.Limit)
             .Select(r => r.Id).ToListAsync();
@@ -145,7 +145,7 @@ public class MiniUrlViewService : IMiniUrlViewService
             .Where(r => recordIds.Contains(r.Id))
             .Include(r => r.Approver)
             .Include(r => r.Creator)
-            .OrderBy(r => r.UpdatedAt)
+            .OrderByDescending(r => r.UpdatedAt)
             .ToListAsync();
     }
 
