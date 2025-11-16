@@ -92,6 +92,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             _appDbContext.TinyUrls.Add(miniUrlRecord);
             await _appDbContext.SaveChangesAsync();
             await txn.CommitAsync();
+            miniUrlRecord.ShortenedUrl = PrependBaseUrlForShortenedUrl(miniUrlRecord.ShortenedUrl); // prepend base url to shortened url
             // 4. Publish to notify about new record creation
             _ = Task.Run(async () =>
             {
@@ -101,7 +102,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             {
                 Id = miniUrlRecord.Id,
                 Url = miniUrlRecord.Url,
-                ShortenedUrl = Path.Combine(_urlConfig.BasePath,  miniUrlRecord.ShortenedUrl),
+                ShortenedUrl = miniUrlRecord.ShortenedUrl,
                 Description = miniUrlRecord.Description,
                 Status = miniUrlRecord.Status.ToString(),
                 CreatedAt = miniUrlRecord.CreatedAt,
@@ -143,6 +144,7 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             entity.ApproverId = _currentUserService.GetUserId();
             await _appDbContext.SaveChangesAsync();
             await txn.CommitAsync();
+            entity.ShortenedUrl = PrependBaseUrlForShortenedUrl(entity.ShortenedUrl);   // prepend base url to shortened url
             // 4. Publish to notify about record approval
             _ = Task.Run(async () => { await _tinyUrlStatusChangePublisher.PublishTinyUrlApprovedEvent(entity); });
             _logger.LogInformation("Url with id {UrlId} has been approved", urlId);
@@ -181,14 +183,16 @@ public class MiniUrlGenerator : IMiniUrlGenerator
             }
 
             // 2. Update attributes and save in DB
+            var shortenedPath = entity.ShortenedUrl;    // just path without full domain
             entity.Status = UrlStatus.Rejected;
             entity.UpdatedAt = DateTime.UtcNow;
             entity.ApproverId = _currentUserService.GetUserId();
             await _appDbContext.SaveChangesAsync();
             await txn.CommitAsync();
+            entity.ShortenedUrl = PrependBaseUrlForShortenedUrl(entity.ShortenedUrl);   // required as websocket connection will use this value to redirect
             _logger.LogInformation("Url with id {UrlId} has been rejected", urlId);
             // 3. Clear from Cache
-            _ = Task.Run(async () => { await RemoveTinyUrlFromCache(entity.ShortenedUrl); });
+            _ = Task.Run(async () => { await RemoveTinyUrlFromCache(shortenedPath); }); // cache key is by path and not full domain path
             // 4. Publish to notify about record rejection
             _ = Task.Run(async () => { await _tinyUrlStatusChangePublisher.PublishTinyUrlRejectedEvent(entity); });
         }
@@ -264,5 +268,10 @@ public class MiniUrlGenerator : IMiniUrlGenerator
         {
             _logger.LogError(ex, "Error removing TinyUrl {ShortenedUrl} from cache", shortenedUrl);
         }
+    }
+
+    private string PrependBaseUrlForShortenedUrl(string shortenedUrl)
+    {
+        return Path.Combine(_urlConfig.BasePath, shortenedUrl);
     }
 }
