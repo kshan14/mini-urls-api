@@ -1,11 +1,11 @@
 # Local Development Setup
 
-If you want to run the required dependencies (**Postgres** and **Redis**) for this project, follow the steps below:
+If you want to run this project locally as containers, follow the steps below:
 
-1. Navigate to the **LocalDevelopment** folder:
+1. Navigate to the **LocalRun** folder:
 
    ```bash
-   cd LocalDevelopment
+   cd LocalRun
    ```
 
 2. Start the dependencies using Docker Compose:
@@ -29,7 +29,7 @@ After connecting, run the following **SQL** command to create the initial admin 
 
 ```bash
 INSERT INTO public."Users" ("Id", "Email", "Username", "Password", "Role") VALUES
-('0199b46b-2762-7c8d-aa1e-91363a2c59b9'::uuid, 'admin@gmail.com', 'admin@gmail.com',
+('0199b46b-2762-7c8d-aa1e-91363a2c59b9'::uuid, 'admin@gmail.com', 'admin',
 '$2a$11$jxARUCXQeHjG0D3V1K./A.sf8Vh4jZxccp0hL.mN1HmlGkTo98KrW', 'Admin');
 ```
 
