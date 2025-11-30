@@ -1,0 +1,97 @@
+version: "3.9"
+
+services:
+  mini-url-api:
+    image: kyawsoehan14/mini-url-api:latest
+    container_name: mini-url-api
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - mini-url-network
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      ASPNETCORE_ENVIRONMENT: production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      DBConfig__Host: postgres
+      DBConfig__Port: 5432
+      DBConfig__Database: mini_url
+      DBConfig__Username: postgres
+      DBConfig__Password: admin
+      JWTConfig__Key: my-secure-long-secret-12345678910
+      JWTConfig__Issuer: MiniUrl
+      JWTConfig__Audience: MiniUrlApiUsers
+      JWTConfig__ExpiresInMinutes: 120
+      UrlConfig__BasePath: http://localhost:8080
+      UrlConfig__CacheExpiryMinutes: 10
+      RedisConfig__Hosts: redis:6379
+      RedisConfig__Username: redis
+      RedisConfig__Password: redis
+      RedisConfig__AbortConnect: true
+      RedisConfig__ConnectTimeout: 30
+      RedisConfig__Ssl: false
+  postgres:
+    image: postgres:16
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: mini_url
+    ports:
+      - "5432:5432"
+    networks:
+      - mini-url-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: redis_server
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - mini-url-network
+    volumes:
+      - redis_data:/data
+    command:
+      [
+        "redis-server",
+        "--user",
+        "default",
+        "on",
+        "nopass",
+        "sanitize-payload",
+        "~*",
+        "&*",
+        "+@all",
+        "--user",
+        "redis",
+        "on",
+        ">redis",
+        "sanitize-payload",
+        "~*",
+        "&*",
+        "+@all",
+      ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  mini-url-network:
+    driver: bridge
