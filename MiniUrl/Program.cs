@@ -38,6 +38,9 @@ if (!builder.Environment.IsDevelopment())
     );
 }
 
+// configure to exclude server header
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
 Log.Logger = loggerConfig.CreateLogger();
 builder.Host.UseSerilog();
 

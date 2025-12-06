@@ -158,3 +158,5 @@ docker-compose up -d
 | `MiniUrl/WebSockets/`          | WebSocket Manager Interface, Implementation and internal WebSocket Model                                         |
 
 _*For Interfaces and Implementations, you may refer to [this readme file](./Documentations/ServiceDetailsReadme.md).*_
+
+_*For API Contract, you may refer to [this swagger json file](./Documentations/SwaggerAPI.json).*_
