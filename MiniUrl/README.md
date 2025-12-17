@@ -102,6 +102,14 @@ The following environment variables need to be configured for the application to
 
 ## Running the entire repo as containers
 
+💡 **Prefer a visual guide?** Watch this video to see the complete docker-compose setup and backend demonstration before following the manual steps below.
+
+### Demo Video
+
+[![Demo Video](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=iW7-gOt8k1g)
+
+Click the image above to watch the demo!
+
 ### 1. Clone the Repository
 
 ```bash
